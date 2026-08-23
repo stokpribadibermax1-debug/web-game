@@ -32,6 +32,7 @@ function baseStyles() {
   .thumb-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .game-info { padding: 10px 12px; }
   .game-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .empty-msg { text-align: center; color: #7a7f8f; padding: 40px 0; font-size: 14px; grid-column: 1 / -1; }
   .player-wrap { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 24px; }
   .player-wrap iframe { width: 100%; height: 100%; border: 0; }
   .back-link { color: #c7cbe6; text-decoration: none; font-size: 14px; }
@@ -52,16 +53,35 @@ function topbarHtml() {
   return `<div class="topbar">
     <div class="topbar-row">
       <a href="/" class="logo">🕹️ ${SITE_NAME}</a>
-      <input type="text" id="searchBox" placeholder="Search" onkeyup="filterGames(this.value)">
+      <input type="text" id="searchBox" placeholder="Search" oninput="filterGames(this.value)">
     </div>
   </div>`;
 }
 
 function cardHtml(game, slug) {
-  return `<a href="/game/${slug}/" class="game-card">
-    <div class="thumb-wrap"><img src="${game.thumb}" alt="${game.title}" loading="lazy"></div>
+  const safeTitle = game.title.replace(/"/g, '&quot;');
+  return `<a href="/game/${slug}/" class="game-card" data-title="${safeTitle.toLowerCase()}">
+    <div class="thumb-wrap"><img src="${game.thumb}" alt="${safeTitle}" loading="lazy"></div>
     <div class="game-info"><div class="game-title">${game.title}</div></div>
   </a>`;
+}
+
+function searchScript() {
+  return `<script>
+    function filterGames(q) {
+      q = q.toLowerCase();
+      var cards = document.querySelectorAll('#game-feed-container .game-card');
+      var visibleCount = 0;
+      cards.forEach(function(card) {
+        var title = card.getAttribute('data-title') || '';
+        var match = title.indexOf(q) !== -1;
+        card.style.display = match ? '' : 'none';
+        if (match) visibleCount++;
+      });
+      var emptyMsg = document.getElementById('emptyMsg');
+      if (emptyMsg) emptyMsg.style.display = visibleCount === 0 ? 'block' : 'none';
+    }
+  </script>`;
 }
 
 function pageShell(title, bodyContent, extraHead = '') {
@@ -83,6 +103,7 @@ ${extraHead}
     <footer>&copy; 2026 ${SITE_NAME}. Powered by GameMonetize.</footer>
   </div>
 </div>
+${searchScript()}
 </body>
 </html>`;
 }
@@ -107,7 +128,11 @@ async function main() {
 
   // Index page
   const cardsHtml = gamesWithSlug.map(g => cardHtml(g, g.slug)).join('\n');
-  const indexBody = `<div id="game-feed-container">${cardsHtml}</div>`;
+  const indexBody = `
+    <div id="game-feed-container">
+      ${cardsHtml}
+      <div id="emptyMsg" class="empty-msg" style="display:none;">Game tidak ditemukan.</div>
+    </div>`;
   fs.writeFileSync(path.join(OUT_DIR, 'index.html'), pageShell(`${SITE_NAME} - Main Game Gratis`, indexBody));
 
   // Game detail pages
@@ -120,7 +145,7 @@ async function main() {
       <h1 class="game-h1">${game.title}</h1>
       <div class="player-wrap"><iframe src="${game.url}" allow="fullscreen; autoplay" allowfullscreen loading="lazy"></iframe></div>
       <h2 class="section-h2">Game Lainnya</h2>
-      <div class="related-grid">${relatedHtml}</div>
+      <div id="game-feed-container" class="related-grid">${relatedHtml}</div>
     `;
     const dir = path.join(OUT_DIR, 'game', game.slug);
     fs.mkdirSync(dir, { recursive: true });
