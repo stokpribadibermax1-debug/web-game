@@ -58,6 +58,28 @@ function topbarHtml() {
   </div>`;
 }
 
+function getGameHash(url) {
+  const parts = url.split('/').filter(Boolean);
+  return parts[parts.length - 1];
+}
+
+function walkthroughHtml(game) {
+  const hash = getGameHash(game.url);
+  return `<div id="gamemonetize-video"></div>
+<script type="text/javascript">
+   window.VIDEO_OPTIONS = {
+      gameid    : "${hash}",
+      width     : "100%",
+      height    : "480px",
+      color     : "#3f007e",
+      getAds    : true
+   };
+   (function (a, b, c) {
+      var d = a.getElementsByTagName(b)[0];
+      a.getElementById(c) || (a = a.createElement(b), a.id = c, a.src = "https://api.gamemonetize.com/video.js", d.parentNode.insertBefore(a, d))
+   })(document, "script", "gamemonetize-video-api");
+</script>`;
+}
 function cardHtml(game, slug) {
   const safeTitle = game.title.replace(/"/g, '&quot;');
   return `<a href="/game/${slug}/" class="game-card" data-title="${safeTitle.toLowerCase()}">
@@ -144,7 +166,8 @@ async function main() {
       <a href="/" class="back-link">&larr; Kembali</a>
       <h1 class="game-h1">${game.title}</h1>
       <div class="player-wrap"><iframe src="${game.url}" allow="fullscreen; autoplay" allowfullscreen loading="lazy"></iframe></div>
-      <h2 class="section-h2">Game Lainnya</h2>
+     <h2 class="section-h2">Panduan Bermain</h2>
+${walkthroughHtml(game)}
       <div id="game-feed-container" class="related-grid">${relatedHtml}</div>
     `;
     const dir = path.join(OUT_DIR, 'game', game.slug);
